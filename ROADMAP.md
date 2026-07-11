@@ -1,7 +1,9 @@
 # ROADMAP — Implementation Plan
 
-> **Status:** **v0.4.0 released** (tagged + pushed). Separate-then-select architecture: DPCRNSeparator (~301K params, dual-output masks, uPIT neg-SI-SDR, dynamic mixing, held-out-speaker validation) + attention stream selection replaces the gender-mirrored classic flow. Extended eval (36 samples, seed=123): **F SI-SDRi +6.73 dB** (was +3.12), **M SI-SDRi +6.90 dB** (was −0.55); PESQ F 1.475 / M 1.505; STOI F 0.830 / M 0.842; stream-selection accuracy F 91.7% / M 100%. **2026-06-15:** RIR augmentation trained (`separator_robust.pt`) — synthetic-to-real gap not closed yet (−0.63 dB on clean, similar on real audio; robotic artifacts remain). Git history cleaned (Co-Authored-By removed via filter-branch, force-pushed). **2026-06-16:** pitch-based stream selection added (`--stream-select pitch`) — language-agnostic alternative to MLP+GMM for real-world/non-English audio. **2026-06-27:** classic NMF flow removed — codebase consolidates on separate-then-select only. Deleted: `nmf_separation.py`, `separation.py`, `mask_net.py`, `smoothing.py`, `train_mask_net.py`. Next: N-speaker extension (Auralis-N).
-> **Last updated:** 2026-06-27.
+> **Status:** **v0.4.0 released** (tagged + pushed). Separate-then-select architecture: DPCRNSeparator (~301K params, dual-output masks, uPIT neg-SI-SDR, dynamic mixing, held-out-speaker validation) + attention stream selection replaces the gender-mirrored classic flow. Extended eval (36 samples, seed=123): **F SI-SDRi +6.73 dB** (was +3.12), **M SI-SDRi +6.90 dB** (was −0.55); PESQ F 1.475 / M 1.505; STOI F 0.830 / M 0.842; stream-selection accuracy F 91.7% / M 100%. **2026-06-27:** classic NMF flow removed — codebase consolidates on separate-then-select only. Deleted: `nmf_separation.py`, `separation.py`, `mask_net.py`, `smoothing.py`, `train_mask_net.py`.
+>
+> **2026-07-01 — Project reframed + single priority set.** Auralis is no longer scoped as a single-course academic exercise (binary M/F separation). It is now a **research project**: given a mixture of **N unknown, simultaneous speakers**, produce **N separated output audio streams**, one per speaker, with no fixed assumption on gender or speaker count. **The only active priority is the N-speaker extension** (see "Final Objective — N-Speaker Cocktail Party" below, promoted from "future phase" to the active roadmap). Every other previously-listed next step (RIR real-audio validation of `separator_robust.pt`, WSJ0-mix/LibriMix benchmarking, academic paper writeup) is **deprioritized and paused** — kept in this document as historical/design record only, not as pending work. They may be revisited opportunistically if they end up serving the N-speaker goal (e.g. LibriMix is itself an N-speaker dataset), but they are not scheduled.
+> **Last updated:** 2026-07-01.
 
 This document tracks the full implementation plan. It must be consulted and updated at the start of each phase. Decisions taken move from the "Open questions" section into the body of the document.
 
@@ -362,8 +364,8 @@ Remaining gap due to DPCRN trained on old distribution — requires retraining w
 | ✅ Done | **Train + evaluate dual-output `separator.pt`** | Done (2026-06-12) | uPIT neg-SI-SDR, dynamic mixing, held-out-speaker val. Replaces `dpcrn.pt` / `dpcrn_male.pt` in the recommended flow. |
 | ✅ Done | **Tag `v0.4.0`** | Done | Both targets positive: F SI-SDRi +6.73 dB, M +6.90 dB; selection accuracy F 91.7% / M 100%. |
 | ❌ Abandoned | **Train / evaluate `dpcrn_male.pt`** | Superseded | Dedicated male model gave −0.55 dB SI-SDR; the separator handles both genders symmetrically. The unidentified ">1000" training warning is moot (that training path is retired). |
-| 🟡 Medium | **WSJ0-mix / LibriMix benchmark** | Not started | Formal comparison with published baselines to position the system academically. |
-| 🔵 Low | **N-speaker extension** | Not started | Replace the binary M/F criterion with a speaker embedding (d-vector/x-vector) from an enrollment clip. Requires reworking the DPCRN conditioning and a multi-speaker dataset. |
+| ⏸ Paused | **WSJ0-mix / LibriMix benchmark** | Deprioritized (2026-07-01) | No longer scheduled on its own — see status block at the top. May resurface as part of the N-speaker dataset work below, since LibriMix natively supports N≥2 mixes. |
+| 🟢 **ACTIVE — only priority** | **N-speaker extension** | See "Final Objective" section below | Promoted to the sole active roadmap item on 2026-07-01. No longer scoped as a low-priority future add-on. |
 
 ---
 
@@ -394,17 +396,20 @@ real data — clean voices are convolved with measured/simulated RIRs before mix
 | `tests/test_augment.py` | New — 8 tests (length preservation, identity impulse, additivity invariant, missing/empty index, deterministic split) |
 | `CLAUDE.md`, `README.md` | Documented module, command, RIR dataset download |
 
-**Status:** ✅ Code complete, 41/41 tests passing. **Pending:** download an RIR set
-into `data/raw/rir/`, train `separator_robust.pt` on the GPU desktop, evaluate on
-real audio, and confirm perceptually before tagging (do not overwrite `separator.pt`).
+**Status:** ✅ Code complete, 41/41 tests passing. ⏸ **Paused (2026-07-01):** real-audio
+validation (download an RIR set into `data/raw/rir/`, train `separator_robust.pt` on the
+GPU desktop, evaluate on real audio, confirm perceptually before tagging) is no longer
+scheduled work — the project's only active priority is the N-speaker extension (see status
+block at the top and "Final Objective" section below). This section is kept as a design
+record; revisit only if it ends up serving the N-speaker goal directly.
 
-**Next step after real-audio validation:** write the academic paper (~10 pages, LaTeX/Overleaf,
-IEEE style) documenting the techniques used — STFT, feature extraction (MFCC, LPC, pitch),
-NMF separation, log-MMSE enhancement, MLP+GMM+HMM attention, DPCRNSeparator with uPIT.
-Required submission for the "Analisi intelligente dei segnali" exam alongside the working software.
+**Academic paper writeup:** also paused as a scheduled task for the same reason. The
+techniques already implemented (STFT, MFCC/LPC/pitch features, NMF separation, log-MMSE
+enhancement, MLP+GMM+HMM attention, DPCRNSeparator with uPIT) remain valid material to
+document later, once the N-speaker work has produced new results worth writing up together.
 
-**RIR datasets (recommended):** MIT Acoustical Reverberation Survey (small),
-OpenSLR28, BUT ReverbDB. Optional **Phase 2** (background noise via WHAM!/DNS) only
+**RIR datasets (recommended, for when this resumes):** MIT Acoustical Reverberation Survey
+(small), OpenSLR28, BUT ReverbDB. Optional **Phase 2** (background noise via WHAM!/DNS) only
 if real audio proves noisy — deferred until Phase 1 is validated by listening.
 
 ---
@@ -643,15 +648,27 @@ Train two GMMs (`GaussianMixture`) on clean male and female speech features sepa
 
 ---
 
-## Final Objective — N-Speaker Cocktail Party (future phase)
+## Final Objective — N-Speaker Cocktail Party (ACTIVE — only priority)
 
-> **Status:** ⬜ Not started. Requires stable 2-speaker system as foundation.
+> **Status:** 🟢 **ACTIVE — the only scheduled priority of the project (set 2026-07-01).**
+> Foundation is in place: the stable 2-speaker separate-then-select system (v0.4.0) proved
+> the architecture (DPCRNSeparator + uPIT + attention/pitch stream selection). Every other
+> roadmap item (RIR real-audio validation, WSJ0/LibriMix benchmarking, paper writeup) is
+> paused in favor of this.
 
-The current system is designed for a fixed 2-speaker mixture (1 male + 1 female). Extending to N arbitrary speakers is the natural final step toward a general cocktail party attention model.
+**Project reframing (2026-07-01):** Auralis moves from a two-course academic exercise
+(binary M/F "cocktail party attention" demo) to a **research project**. The goal is no
+longer to pick one target speaker out of exactly two — it is general **N-speaker source
+separation**: given a mixture of an unknown number of simultaneous speakers, produce **N
+separated output audio files**, one per speaker, with no fixed assumption on gender or
+speaker count.
 
 ### Problem statement
 
-Given a mixture of N ≥ 2 simultaneous speakers (unknown gender, unknown count), selectively isolate the target speaker based on a conditioning signal (e.g., a short enrollment clip, a speaker embedding, or a gender label).
+Given a mixture of N ≥ 2 simultaneous speakers (unknown gender, unknown count), separate
+the mixture into N individual output streams — one waveform per speaker — rather than
+selecting a single target. Speaker selection/attention (the original cocktail-party framing)
+becomes an optional downstream step on top of full separation, not the end goal itself.
 
 ### Architectural considerations
 
